@@ -285,6 +285,9 @@
            vertico--total total
            vertico--candidates candidates))))
 
+;; TODO vertico-insert: if current candidate is selected again, remove
+;; TODO vertico--format-candidates: Filter selected candidates and show first
+
 (defun vertico--flatten-string (prop str)
   "Flatten STR with display or invisible PROP."
   (let ((len (length str)) (pos 0) (chunks))
@@ -461,9 +464,20 @@
 (defun vertico-insert ()
   "Insert current candidate in minibuffer."
   (interactive)
-  (when-let (cand (and (>= vertico--index 0) (vertico--candidate)))
-    (delete-minibuffer-contents)
-    (insert cand)))
+  (when (>= vertico--index 0)
+    (let* ((content (minibuffer-contents-no-properties))
+           (base (substring content 0 vertico--base))
+           (cand (nth vertico--index vertico--candidates)))
+      (delete-minibuffer-contents)
+      (insert
+       (if (eq minibuffer-completion-table #'crm--collection-fn)
+           (let ((selected (split-string base crm-separator t)))
+             (string-join
+              (if (member cand selected)
+                  (nconc (delete cand selected) (list ""))
+                (nconc selected (list cand "")))
+             ","))
+         (concat base cand))))))
 
 (defun vertico--candidate ()
   "Return current candidate string."
